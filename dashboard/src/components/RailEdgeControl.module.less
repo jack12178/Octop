@@ -7,7 +7,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: auto;
+  /* The 16px edge spans the full sidebar height and sits above the resize
+     handle (z-index 3). Let pointer events fall through to that handle and
+     keep only the button itself clickable. See #2506. */
+  pointer-events: none;
 
   &:hover {
     .line {
@@ -65,7 +68,8 @@
   cursor: pointer;
   transform: translate(-50%, -50%);
   opacity: 0;
-  pointer-events: none;
+  /* Invisible but still a hit target, so hovering the button reveals it. */
+  pointer-events: auto;
   transition:
     opacity 0.15s ease,
     color 0.15s ease,
@@ -88,6 +92,7 @@
 }
 
 .edge:hover .btn,
+.btn:hover,
 .btn:focus-visible {
   opacity: 1;
   pointer-events: auto;
