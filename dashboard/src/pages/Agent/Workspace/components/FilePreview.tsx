@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "../../../../components/Markdown/LazyMarkdown";
 import styles from "../index.module.less";
 
@@ -104,6 +104,33 @@ function MarkdownPreview({ content }: { content: string }) {
   );
 }
 
+/**
+ * Render HTML from a blob URL instead of ``srcDoc``.
+ *
+ * A ``srcDoc`` document inherits the parent page as its base URL, so an
+ * in-page anchor such as ``href="#summary"`` navigates the iframe to the Octop
+ * app route. That replaces the artifact with the SPA shell, whose assets are
+ * then blocked by CORS from the sandboxed frame's opaque origin (see #2623).
+ * A blob URL gives the document its own URL, so fragment links stay in-document.
+ * The sandbox still omits ``allow-same-origin``, so the origin stays opaque.
+ */
+function HtmlPreview({ content }: { content: string }) {
+  const src = useMemo(
+    () => URL.createObjectURL(new Blob([content], { type: "text/html" })),
+    [content],
+  );
+  useEffect(() => () => URL.revokeObjectURL(src), [src]);
+
+  return (
+    <iframe
+      title="HTML preview"
+      className={styles.htmlFrame}
+      src={src}
+      sandbox="allow-scripts allow-popups allow-forms"
+    />
+  );
+}
+
 export default function FilePreview({
   kind,
   content,
@@ -115,17 +142,7 @@ export default function FilePreview({
     case "markdown":
       return <MarkdownPreview content={content} />;
     case "html":
-      // Render in a sandboxed iframe with an opaque origin (no
-      // ``allow-same-origin``) so the previewed markup cannot reach our
-      // cookies, JWT, or parent DOM. Scripts run in that isolated origin only.
-      return (
-        <iframe
-          title="HTML preview"
-          className={styles.htmlFrame}
-          srcDoc={content}
-          sandbox="allow-scripts allow-popups allow-forms"
-        />
-      );
+      return <HtmlPreview content={content} />;
     default:
       return null;
   }
