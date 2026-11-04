@@ -494,9 +494,12 @@ async def test_install_team_host_enrich_uses_host_assignment(manager: AgentManag
     manager._install_team_host_dispatch()
     req = SimpleNamespace(thread_id="t~child", messages="我最近总失眠")
     out = await team._enrich_request("child", req)
-    assert isinstance(out.messages[0], SystemMessage)
-    assert isinstance(out.messages[1], HumanMessage)
-    assert out.messages[1].content == "请给出可执行的睡眠建议，聚焦作息而不是诊断"
+    # The dispatch note must NOT become a second system message: multiple
+    # system roles are rejected by some LiteLLM/vLLM backends (see #2802).
+    assert len(out.messages) == 1
+    assert isinstance(out.messages[0], HumanMessage)
+    assert not any(isinstance(message, SystemMessage) for message in out.messages)
+    assert "请给出可执行的睡眠建议，聚焦作息而不是诊断" in out.messages[0].content
     assert "团队派工" in out.messages[0].content
 
 

@@ -2354,16 +2354,21 @@ def wire_host_dispatch(
         pair = take_prompt(agent_id, getattr(req, "thread_id", None))
         if not pair:
             return req
-        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_core.messages import HumanMessage
 
         question, dispatch = pair
         messages: list[Any] = []
-        if dispatch and dispatch != question:
-            messages.append(SystemMessage(content=dispatch))
         if question:
+            # Keep dispatch context in the human turn. Appending it as a second
+            # SystemMessage produces multiple system roles in one request,
+            # which several LiteLLM/vLLM backends reject with a 404; the extra
+            # system message is also replayed as history on the next turn.
+            content = question
+            if dispatch and dispatch != question:
+                content = f"{dispatch}\n\n{question}"
             messages.append(
                 HumanMessage(
-                    content=question,
+                    content=content,
                     id=f"team-peer:{getattr(req, 'thread_id', None)}:{new_ulid()}:human",
                 )
             )
